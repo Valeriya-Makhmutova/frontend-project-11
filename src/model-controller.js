@@ -1,7 +1,9 @@
+import { object, string, array, setLocale } from 'yup';
 import { proxy, subscribe, snapshot } from 'valtio/vanilla'
 // import updateUi from './view'
-import { object, string, array } from 'yup';
 
+import i18next from 'i18next';
+import resources from '../locales/index.js'
 
 const submitButton = document.querySelector('.btn')
 const inputLine = document.querySelector('#url-input')
@@ -10,6 +12,27 @@ const feedbackCont = document.querySelector('.feedback')
 
 
 const engine = () => {
+
+  i18next.init({
+    lng: 'ru',
+    debug: true,
+    resources: {
+      ru: {
+        translation: {
+          url: 'Ссылка должна быть валидным URL',
+          required: 'Введите, пожалуйста, ссылку на RSS поток',
+          notOneOf: 'Такая ссылка уже есть. Введите, пожалуйста, уникальную',
+        }
+      }
+    }
+  })
+    .then((res) => {
+      console.log('res', res)
+      // console.log(i18next.t('url'))
+    })
+    .catch((err) => console.log(err))
+
+
   const state = proxy({
     feedColl: [],
     currentFeed: '',
@@ -42,16 +65,27 @@ const engine = () => {
 
   submitButton.addEventListener('click', (e) => {
     e.preventDefault()
+    // console.log(i18next.t('validation.required'))
     state.errors = []
 
     const coll = snapshot(state).feedColl;
     console.log('coll', coll)
 
+    setLocale({
+      string:{
+        url: i18next.t('url'),
+      },
+      mixed: {
+        required: i18next.t('required'),
+        notOneOf: i18next.t('notOneOf')
+      }
+    })
+
     let schema = object().shape({
       links: string()
-        .url('Ссылка должна быть валидным URL')
-        .required('Введите, пожалуйста, ссылку на RSS поток')
-        .notOneOf(coll, 'Такая ссылка уже есть. Введите, пожалуйста, уникальную')
+        .url()
+        .required()
+        .notOneOf(coll)
     })
 
     const feed = inputLine.value
@@ -68,7 +102,7 @@ const engine = () => {
 
       })
       .catch((err) => {
-        console.log('err', err)
+        console.log('err', err.errors)
         state.errors.push(err.message)
       })
   })
