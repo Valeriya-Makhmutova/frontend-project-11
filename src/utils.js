@@ -15,13 +15,13 @@ export const parserTags = (data, keys) => {
   return result
 }
 
-export const getUlElemsFromLi = (data, keys) => {
+export const getUlPosts = (data, keys) => {
   console.log('data', data)
   const resUl = document.createElement('ul')
   resUl.classList.add('list-group', 'border-0', 'rounded-0')
 
   data.forEach((item) => {
-    console.log('item', item)
+    // console.log('item', item)
     const linkElem = document.createElement('a')
     const li = document.createElement('li')
 
@@ -30,8 +30,8 @@ export const getUlElemsFromLi = (data, keys) => {
       'border-0', 'border-end-0')
 
     keys.forEach((key) => {
-      console.log('key', key)
-    console.log('item[key]', item[key])
+      // console.log('key', key)
+      // console.log('item[key]', item[key])
       if (key === 'link') {
         linkElem.href = item[key][0].innerHTML
       }
@@ -52,7 +52,7 @@ export const getUlElemsFromLi = (data, keys) => {
 
     resUl.appendChild(li)
   })
-  console.log('resUl', resUl)
+  // console.log('resUl', resUl)
   return resUl
 }
 
@@ -78,12 +78,6 @@ export const getStartContainer = () => {
   feedDivCardBody.classList.add('card-body')
   postsDivCardBody.classList.add('card-body')
 
-  const ulFeed = document.createElement('ul')
-  // const ulPosts = document.createElement('ul')
-
-  ulFeed.classList.add('list-group', 'border-0', 'rounded-0')
-  // ulPosts.classList.add('list-group', 'border-0', 'rounded-0')
-
   const feedHeader = document.createElement('h2')
   const postsHeader = document.createElement('h2')
 
@@ -99,9 +93,6 @@ export const getStartContainer = () => {
   cardDivFeeds.appendChild(feedDivCardBody)
   cardDivPosts.appendChild(postsDivCardBody)
 
-  cardDivFeeds.appendChild(ulFeed)
-  // cardDivPosts.appendChild(ulPosts)
-
   divFeeds.appendChild(cardDivFeeds)
   divPosts.appendChild(cardDivPosts)
 
@@ -113,26 +104,29 @@ export const getStartContainer = () => {
 
 
 
-export const getFeed = (data) => {
-  // теги title description
-  const li = document.createElement('li')
-  li.classList.add('list-group-item', 'border-0', 'border-end-0')
+export const getUlFeeds = (data) => {
+  const ulFeeds = document.createElement('ul')
+  ulFeeds.classList.add('list-group', 'border-0', 'rounded-0')
 
-  const titleTag = data.getElementsByTagName('title')[0]
-  const descriptionTag = data.getElementsByTagName('description')[0]
-  console.log('title', titleTag)
-  console.log('desc', descriptionTag)
+  data.forEach((pairObj) => {
+    const li = document.createElement('li')
+    li.classList.add('list-group-item', 'border-0', 'border-end-0')
 
-  const header3 = document.createElement('h3')
-  header3.classList.add('h6', 'm-0')
-  header3.textContent = titleTag.innerHTML
+    const header = document.createElement('h3')
+    header.classList.add('h6', 'm-0')
+    header.textContent = pairObj.title
 
-  const text = document.createElement('p')
-  text.classList.add('m-0', 'small', 'text-black-50')
-  text.textContent = descriptionTag.innerHTML
 
-  li.appendChild(header3)
-  li.appendChild(text)
+    const text = document.createElement('p')
+    text.classList.add('m-0', 'small', 'text-black-50')
+    text.textContent = pairObj.description
 
-  return li
+    li.appendChild(header)
+    li.appendChild(text)
+    
+    ulFeeds.appendChild(li)
+  })
+
+  console.log('ulFeeds', ulFeeds)
+  return ulFeeds
 }

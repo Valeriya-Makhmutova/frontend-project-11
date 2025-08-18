@@ -6,7 +6,8 @@ import i18next from 'i18next';
 import resources from '../locales/index.js'
 import axios from 'axios';
 
-import { parserTags, getStartContainer, getUlElemsFromLi } from './utils.js';
+import { parserTags, getStartContainer, 
+  getUlPosts, getUlFeeds } from './utils.js';
 
 const submitButton = document.querySelector('.btn')
 const inputLine = document.querySelector('#url-input')
@@ -33,7 +34,8 @@ const engine = () => {
   const state = proxy({
     feedColl: [],
     currentFeed: '',
-    data: [],
+    dataPosts: [],
+    dataFeeds: [],
     errors: [],
   })
 
@@ -65,15 +67,22 @@ const engine = () => {
       const startContainer = getStartContainer()
       mainContainer.appendChild(startContainer) // нарисовали оба контейнера
 
-      const postsData = obj.data
-      console.log('postData', postsData)
+      const postsData = obj.dataPosts
+      const feedsData = obj.dataFeeds
+      // console.log('postData', postsData)
 
-      const ulPosts = getUlElemsFromLi(postsData, ['title', 'link'])
-      console.log('ulPosts', ulPosts)
+      const ulPosts = getUlPosts(postsData, ['title', 'link'])
+      // console.log('ulPosts', ulPosts)
+      const ulFeeds = getUlFeeds(feedsData)
 
       const posts = document.querySelector('.posts')
+      const feeds = document.querySelector('.feeds')
+
       const postContainer = posts.querySelector('.card')
+      const feedsContainer = feeds.querySelector('.card')
+
       postContainer.appendChild(ulPosts)
+      feedsContainer.appendChild(ulFeeds)
     }
 
 
@@ -146,11 +155,22 @@ const engine = () => {
         const tags = parser.parseFromString(data.data.contents, "text/xml");
 
         const items = tags.getElementsByTagName('item')
-
         const resDomParsed = parserTags(items, ['title', 'link'])
-        console.log('resDomParsed', resDomParsed)
+        // console.log('resDomParsed', resDomParsed)
+
+        const feedTitle = tags.querySelector('title')
+        const feedDesc = tags.querySelector('description')
+        // console.log('feedTitle', feedTitle)
+        // console.log('feedDesc', feedDesc)
+        const feedData = {
+          title: feedTitle.innerHTML,
+          description: feedDesc.innerHTML
+        }
         
-        state.data.push(...resDomParsed)
+        state.dataPosts.push(...resDomParsed)
+        state.dataFeeds.push(feedData)
+
+        console.log('state', snapshot(state).dataFeeds)
 
       })
       .catch((err) => {
