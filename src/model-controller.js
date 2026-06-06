@@ -7,26 +7,24 @@ import resources from "../locales/index.js";
 import axios from "axios";
 
 import {
-  parserTags,
   getStartContainer,
   getUlPosts,
   getUlFeeds,
+  XMLparserByTags,
 } from "./utils.js";
 
 const submitButton = document.querySelector(".btn");
 const inputLine = document.querySelector("#url-input");
 const feedbackCont = document.querySelector(".feedback");
-
 const mainContainer = document.querySelector(".container-xxl");
 
-// console.log('resources', resources)
 
 const getPostsPromise = (url) => {
+  // эта функция возвращает просто xml разметку
   const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
   const result = axios.get(
     `https://allorigins.hexlet.app/get?url=${encodeURIComponent(normalizedUrl)}`,
   );
-  // console.log('result', result)
   return result; // возвращаем промис
 };
 
@@ -48,37 +46,37 @@ const engine = () => {
   const state = proxy({
     isFirstCall: true,
     feedColl: [],
-    currentFeed: "",
+    currentFeed: "", // TODO: убрать currentFeed
     dataPosts: [],
     dataFeeds: [],
     errors: [],
   });
 
-  // const checkNewPosts = (feed) => {
-  //   const currentState = snapshot(state);
-  //   const newDataPromise = getPostsPromise(url);
-  // };
-
   const updateState = (data) => {
-    const currentState = snapshot(state);
-    const parser = new DOMParser();
-    const tags = parser.parseFromString(data.data.contents, "text/xml");
+    const currentstate = snapshot(state);
+    const { postsData, feedData: newFeed } = XMLparserByTags(data.data.contents);
 
-    const items = tags.getElementsByTagName("item");
-    const resDomParsed = parserTags(items, ["title", "link"]);
-    // console.log('resDomParsed', resDomParsed)
+    const currentFeed = currentstate.dataFeeds.find(
+      (feed) => feed.link === newFeed.link,
+    );
 
-    const feedTitle = tags.querySelector("title");
-    const feedDesc = tags.querySelector("description");
-    // console.log('feedTitle', feedTitle)
-    // console.log('feedDesc', feedDesc)
-    const feedData = {
-      title: feedTitle.innerHTML,
-      description: feedDesc.innerHTML,
-    };
+      const currentFeedIdx = currentstate.dataFeeds.findIndex(
+      (feed) => feed.link === newFeed.link,
+    );
 
-    state.dataPosts.push(...resDomParsed);
-    state.dataFeeds.push(feedData);
+    if (currentFeed) {
+      if (currentFeed.lastBuildDate !== newFeed.lastBuildDate) {
+        const newPosts = postsData.filter((post) => currentstate.dataPosts.every(statePost => statePost.title !== post.title)) 
+        // добавить к фидам id, а к постам id фидов
+        // console.log('newPosts', newPosts)
+        state.dataPosts.push(...newPosts)
+        state.dataFeeds[currentFeedIdx].lastBuildDate = newFeed.lastBuildDate 
+      }
+      return                                                                            
+    } else {
+      state.dataPosts.push(...postsData);
+      state.dataFeeds.push(newFeed);
+    }
   };
 
   const refreshFeeds = () => {
@@ -91,7 +89,10 @@ const engine = () => {
     }
     // 1. Собираем массив промисов для всех ссылок
     const promises = currentState.feedColl.map((url) =>
-      getPostsPromise(url).then((data) => updateState(data)),
+      getPostsPromise(url).then((data) => {
+        console.log('data in refresh', data)
+        return updateState(data);
+      }),
     );
     // 2. Ждем, пока обновятся ВСЕ ссылки
     Promise.allSettled(promises).finally(() => {
@@ -132,7 +133,7 @@ const engine = () => {
       const feedsData = obj.dataFeeds;
       // console.log('postData', postsData)
 
-      const ulPosts = getUlPosts(postsData, ["title", "link"]);
+      const ulPosts = getUlPosts(postsData);
       // console.log('ulPosts', ulPosts)
       const ulFeeds = getUlFeeds(feedsData);
 
@@ -142,16 +143,18 @@ const engine = () => {
       const postContainer = posts.querySelector(".card");
       const feedsContainer = feeds.querySelector(".card");
 
+      // const postsSet = new Set(ulPosts)
+      // const feedsSet = new Set(ulFeeds)
+
       postContainer.appendChild(ulPosts);
       feedsContainer.appendChild(ulFeeds);
     }
   }; // updateUI
 
   subscribe(state, updateUi);
-  // console.log('submitButton', submitButton)
-  // console.log('inputLine', inputLine)
 
   submitButton.addEventListener("click", (e) => {
+    // в этом случае мы только по кнопке запрашиваем данные
     e.preventDefault();
     // console.log(i18next.t('validation.required'))
     state.errors = [];
@@ -174,38 +177,35 @@ const engine = () => {
       links: string().url().required().notOneOf(coll),
     });
 
-    const feed = inputLine.value;
+    const feed = inputLine.value; // забрали ссылку на фид из формы 'http...'
 
     // console.log('feed', feed)
     schema
       .validate({ links: feed })
       .then((res) => {
         // console.log('Ок', res)
-        state.feedColl.push(feed);
+        state.feedColl.push(feed); // поместили в коллекцию фидов эту ссылку
 
-        state.currentFeed = feed;
+        state.currentFeed = feed; // пометили текущую ссылку
         state.errors = [];
         inputLine.focus();
 
-        return snapshot(state);
+        return snapshot(state); // проталкиваем текущее состояние
       })
       .then((state) => {
-        return getPostsPromise(state.currentFeed);
+        // текущее состояние
+        return getPostsPromise(state.currentFeed); // делаем get запрос и получаем xml разметку в виде строки
       })
-      .then((data) => updateState(data))
+      .then((data) => {
+         console.log('data in submit', data)
+         return updateState(data)}) // в стейт тут должны отдавать данные в виде объекта
       .catch((err) => {
         // console.log('err', err.errors)
         console.log("error", err);
         state.errors.push(err.message);
       })
-      .finally(() => {
-        // refreshFeeds();
-      });
   });
 
-  // document.addEventListener('DOMContentLoaded', () => {
-  //   return refreshFeeds()
-  // })
   updateUi();
   refreshFeeds();
 };
