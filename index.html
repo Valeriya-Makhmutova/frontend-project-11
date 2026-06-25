@@ -85,6 +85,7 @@
                 Закрыть
               </button>
               <a class="btn btn-primary btn-primary-modal" role="button"
+                onkeydown="if(event.key === 'Enter' || event.key === ' ') { this.click(); event.preventDefault(); }"
                 target="_blank" rel="noreferrer noopener">Читать полностью</a
               >
             </div>
