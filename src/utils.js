@@ -1,7 +1,5 @@
 export const getUlPosts = (dataObj) => {
   {
-    console.log("dataObj", dataObj); // обычный объект
-
     // {title: 'Нобелевская премия по химии — 2025',
     //   link: 'https://elementy.ru/novosti_nauki/434390/Nobelevskaya_premiya_po_khimii_2025',
     //   pubDate: '03 Nov 2025 15:48:00 +0300',
@@ -41,8 +39,10 @@ export const getUlPosts = (dataObj) => {
       button.type = "button";
       
       // data-bs-toggle="modal" data-bs-target="#exampleModal"
-      button.setAttribute("data-bs-toggle", "modal")
-      button.setAttribute("data-bs-target", "#modal-post-info")
+      // button.setAttribute("data-bs-toggle", "modal")
+      button.dataset.bsToggle = "modal"
+      button.dataset.bsTarget = "#modal-post-info"
+      // button.setAttribute("data-bs-target", "#modal-post-info")
 
       li.appendChild(button);
 
