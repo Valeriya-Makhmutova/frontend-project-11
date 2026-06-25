@@ -4,7 +4,10 @@ export const getUlPosts = (dataObj) => {
 
     // {title: 'Нобелевская премия по химии — 2025',
     //   link: 'https://elementy.ru/novosti_nauki/434390/Nobelevskaya_premiya_po_khimii_2025',
-    //   pubDate: '03 Nov 2025 15:48:00 +0300'}
+    //   pubDate: '03 Nov 2025 15:48:00 +0300',
+    //  description: ...,
+    //  isViewed: false, true (fw-bold, fw-normal)
+    //}
 
     const resUl = document.createElement("ul"); // обертка список
 
@@ -23,10 +26,12 @@ export const getUlPosts = (dataObj) => {
         "border-0",
         "border-end-0",
       );
+      li.classList.add(item.isViewed ? 'fw-normal' : 'fw-bold');
 
       linkElem.href = item.link;
 
       linkElem.textContent = item.title;
+      linkElem.target = '_blank'
 
       li.appendChild(linkElem);
 
@@ -34,6 +39,10 @@ export const getUlPosts = (dataObj) => {
       button.classList.add("btn", "btn-outline-primary", "btn-sm");
       button.textContent = "Просмотр";
       button.type = "button";
+      
+      // data-bs-toggle="modal" data-bs-target="#exampleModal"
+      button.setAttribute("data-bs-toggle", "modal")
+      button.setAttribute("data-bs-target", "#modal-post-info")
 
       li.appendChild(button);
 
@@ -152,11 +161,14 @@ const getPostsData = (xmlData) => {
     const link = item.querySelector("link");
     const title = item.querySelector("title");
     const pubDate = item.querySelector("pubDate");
+    const description = item.querySelector("description")
 
     const itemData = {
       title: title.textContent,
       link: link.textContent,
       pubDate: pubDate.textContent,
+      description: description.textContent,
+      isViewed: false,
     };
 
     resultPostsData.push(itemData);

@@ -13,11 +13,11 @@ import {
   XMLparserByTags,
 } from "./utils.js";
 
+
 const submitButton = document.querySelector(".btn");
 const inputLine = document.querySelector("#url-input");
 const feedbackCont = document.querySelector(".feedback");
 const mainContainer = document.querySelector(".container-xxl");
-
 
 const getPostsPromise = (url) => {
   // эта функция возвращает просто xml разметку
@@ -54,25 +54,31 @@ const engine = () => {
 
   const updateState = (data) => {
     const currentstate = snapshot(state);
-    const { postsData, feedData: newFeed } = XMLparserByTags(data.data.contents);
+    const { postsData, feedData: newFeed } = XMLparserByTags(
+      data.data.contents,
+    );
 
     const currentFeed = currentstate.dataFeeds.find(
       (feed) => feed.link === newFeed.link,
     );
 
-      const currentFeedIdx = currentstate.dataFeeds.findIndex(
+    const currentFeedIdx = currentstate.dataFeeds.findIndex(
       (feed) => feed.link === newFeed.link,
     );
 
     if (currentFeed) {
       if (currentFeed.lastBuildDate !== newFeed.lastBuildDate) {
-        const newPosts = postsData.filter((post) => currentstate.dataPosts.every(statePost => statePost.title !== post.title)) 
+        const newPosts = postsData.filter((post) =>
+          currentstate.dataPosts.every(
+            (statePost) => statePost.title !== post.title,
+          ),
+        );
         // добавить к фидам id, а к постам id фидов
         // console.log('newPosts', newPosts)
-        state.dataPosts.push(...newPosts)
-        state.dataFeeds[currentFeedIdx].lastBuildDate = newFeed.lastBuildDate 
+        state.dataPosts.push(...newPosts);
+        state.dataFeeds[currentFeedIdx].lastBuildDate = newFeed.lastBuildDate;
       }
-      return                                                                            
+      return;
     } else {
       state.dataPosts.push(...postsData);
       state.dataFeeds.push(newFeed);
@@ -82,6 +88,7 @@ const engine = () => {
   const refreshFeeds = () => {
     // refresh
     const currentState = snapshot(state);
+    console.log('currState', currentState)
 
     if (currentState.feedColl.length === 0) {
       setTimeout(refreshFeeds, 5000);
@@ -90,7 +97,7 @@ const engine = () => {
     // 1. Собираем массив промисов для всех ссылок
     const promises = currentState.feedColl.map((url) =>
       getPostsPromise(url).then((data) => {
-        console.log('data in refresh', data)
+        console.log("data in refresh", data);
         return updateState(data);
       }),
     );
@@ -149,6 +156,9 @@ const engine = () => {
       postContainer.appendChild(ulPosts);
       feedsContainer.appendChild(ulFeeds);
     }
+
+
+    
   }; // updateUI
 
   subscribe(state, updateUi);
@@ -197,14 +207,41 @@ const engine = () => {
         return getPostsPromise(state.currentFeed); // делаем get запрос и получаем xml разметку в виде строки
       })
       .then((data) => {
-         console.log('data in submit', data)
-         return updateState(data)}) // в стейт тут должны отдавать данные в виде объекта
+        console.log("data in submit", data);
+        return updateState(data);
+      }) // в стейт тут должны отдавать данные в виде объекта
       .catch((err) => {
         // console.log('err', err.errors)
         console.log("error", err);
         state.errors.push(err.message);
-      })
+      });
   });
+
+  mainContainer.addEventListener('click', function(event) {
+    const currentState = snapshot(state);
+    if (event.target.classList.contains('btn-sm')) {
+      const linkElement = event.target.parentElement.querySelector('a')
+      const targetPost = state.dataPosts.find(post => post.title === linkElement.textContent); 
+      //linkElement.textContent заголовок
+      if (targetPost) {
+        targetPost.isViewed = true
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(targetPost.description, 'text/html');
+        const cleanDescription = doc.body.textContent;
+        console.log('targetPost', targetPost)
+        // console.log('targetPost cleanDescription', cleanDescription)
+        const modalTitle = document.querySelector('.modal-title')
+        const modalDescription = document.querySelector('.modal-body')
+        const modalLinkButton = document.querySelector('.btn-primary-modal')
+        modalTitle.innerHTML = targetPost.title
+        modalDescription.innerHTML = cleanDescription
+        modalLinkButton.setAttribute("href", targetPost.link)
+        updateUi()
+      }
+    }
+  })
+  
+
 
   updateUi();
   refreshFeeds();
