@@ -19,13 +19,37 @@ const inputLine = document.querySelector("#url-input");
 const feedbackCont = document.querySelector(".feedback");
 const mainContainer = document.querySelector(".container-xxl");
 
-const getPostsPromise = (url) => {
+const successClasses = () => {
+  inputLine.classList.remove("is-invalid");
+  feedbackCont.classList.remove("text-danger");
+  feedbackCont.classList.add("text-success");
+}
+
+const errorClasses = () => {
+  inputLine.classList.add("is-invalid");
+  feedbackCont.classList.remove("text-success");
+  feedbackCont.classList.add("text-danger");
+}
+
+const getPostsPromise = (url, retries = 3, delay = 100) => {
   // эта функция возвращает просто xml разметку
   const normalizedUrl = url.startsWith("http") ? url : `https://${url}`;
-  const result = axios.get(
+  return axios.get(
     `https://allorigins.hexlet.app/get?url=${encodeURIComponent(normalizedUrl)}`,
-  );
-  return result; // возвращаем промис
+  { timeout: 5000 }).catch((error) => {
+    // Если попытки остались И это ошибка сети/таймаута (нет ответа от сервера)
+    if (retries > 1 && (!error.response || error.response.status >= 500)) {
+      console.warn(`Сеть нестабильна, повторяю запрос... Осталось попыток: ${retries - 1}`);
+      
+      // Ждем указанное время и вызываем функцию снова
+      return new Promise((resolve) => setTimeout(resolve, delay))
+        .then(() => getPostsPromise(url, retries - 1, delay * 2)); // Удваиваем задержку
+    }
+    
+    // Если попытки исчерпаны или это ошибка 4xx (например, 404), пробрасываем её дальше
+    throw error;
+  });
+    // возвращаем промис
 };
 
 const engine = () => {
@@ -57,15 +81,16 @@ const engine = () => {
     const { postsData, feedData: newFeed } = XMLparserByTags(
       data.data.contents,
     );
-
+    console.log('new feed', newFeed)
     const currentFeed = currentstate.dataFeeds.find(
-      (feed) => feed.link === newFeed.link,
+      (feed) => feed.link === newFeed.link && feed.title === newFeed.title,
     );
 
     const currentFeedIdx = currentstate.dataFeeds.findIndex(
-      (feed) => feed.link === newFeed.link,
+      (feed) => feed.link === newFeed.link && feed.title === newFeed.title,
     );
-
+    console.log('currentFeed', currentFeed)
+    console.log('newFeed', newFeed)
     if (currentFeed) {
       if (currentFeed.lastBuildDate !== newFeed.lastBuildDate) {
         const newPosts = postsData.filter((post) =>
@@ -78,17 +103,19 @@ const engine = () => {
         state.dataPosts.push(...newPosts);
         state.dataFeeds[currentFeedIdx].lastBuildDate = newFeed.lastBuildDate;
       }
-      return;
+      // return;
     } else {
       state.dataPosts.push(...postsData);
       state.dataFeeds.push(newFeed);
     }
+    const secondCurrentstate = snapshot(state);
+    console.log('secondCurrentstate', secondCurrentstate)
   };
 
   const refreshFeeds = () => {
     // refresh
     const currentState = snapshot(state);
-    console.log('currState', currentState)
+    // console.log('currState', currentState)
 
     if (currentState.feedColl.length === 0) {
       setTimeout(refreshFeeds, 5000);
@@ -97,8 +124,12 @@ const engine = () => {
     // 1. Собираем массив промисов для всех ссылок
     const promises = currentState.feedColl.map((url) =>
       getPostsPromise(url).then((data) => {
-        console.log("data in refresh", data);
+        // console.log("data in refresh", data);
         return updateState(data);
+      }).catch((error) => {
+        console.error('Все попытки получить данные исчерпаны.')
+        errorClasses()
+        feedbackCont.textContent = 'Ошибка сети'
       }),
     );
     // 2. Ждем, пока обновятся ВСЕ ссылки
@@ -114,19 +145,17 @@ const engine = () => {
     // console.log('obj', obj)
 
     if (state.errors.length > 0) {
-      inputLine.classList.add("is-invalid");
-      feedbackCont.textContent = obj.errors[0];
-      feedbackCont.classList.remove("text-success");
-      feedbackCont.classList.add("text-danger");
+      errorClasses()
+      feedbackCont.textContent = "Ресурс не содержит валидный RSS"
       return;
     } else {
       if (obj.currentFeed) {
-        inputLine.classList.remove("is-invalid");
-        feedbackCont.classList.remove("text-danger");
-
-        feedbackCont.classList.add("text-success");
-
-        feedbackCont.textContent = "Всё прошло успешно :)";
+        successClasses()
+        feedbackCont.textContent = "RSS успешно загружен";
+        setTimeout(() => {
+          feedbackCont.textContent = ""
+        },5000)
+        
         inputLine.value = "";
       }
     }
@@ -139,20 +168,19 @@ const engine = () => {
       const postsData = obj.dataPosts;
       const feedsData = obj.dataFeeds;
       // console.log('postData', postsData)
-
+      console.log('feedsData', feedsData)
       const ulPosts = getUlPosts(postsData);
       // console.log('ulPosts', ulPosts)
       const ulFeeds = getUlFeeds(feedsData);
+      
 
       const posts = document.querySelector(".posts");
       const feeds = document.querySelector(".feeds");
 
       const postContainer = posts.querySelector(".card");
       const feedsContainer = feeds.querySelector(".card");
-
-      // const postsSet = new Set(ulPosts)
-      // const feedsSet = new Set(ulFeeds)
-
+      // console.log(obj, 'obj')
+      // console.log(ulFeeds, 'ulFeeds')
       postContainer.appendChild(ulPosts);
       feedsContainer.appendChild(ulFeeds);
     }
@@ -207,13 +235,15 @@ const engine = () => {
         return getPostsPromise(state.currentFeed); // делаем get запрос и получаем xml разметку в виде строки
       })
       .then((data) => {
-        console.log("data in submit", data);
         return updateState(data);
       }) // в стейт тут должны отдавать данные в виде объекта
       .catch((err) => {
         // console.log('err', err.errors)
         console.log("error", err);
-        state.errors.push(err.message);
+        // state.errors.push(err.message);
+        console.error('Все попытки получить данные исчерпаны.')
+        errorClasses()
+        feedbackCont.textContent = 'Ошибка сети'
       });
   });
 
@@ -228,8 +258,6 @@ const engine = () => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(targetPost.description, 'text/html');
         const cleanDescription = doc.body.textContent;
-        console.log('targetPost', targetPost)
-        // console.log('targetPost cleanDescription', cleanDescription)
         const modalTitle = document.querySelector('.modal-title')
         const modalDescription = document.querySelector('.modal-body')
         const modalLinkButton = document.querySelector('.btn-primary-modal')
@@ -244,7 +272,7 @@ const engine = () => {
 
 
   updateUi();
-  refreshFeeds();
+  // refreshFeeds();
 };
 
 export default engine;

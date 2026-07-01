@@ -115,8 +115,9 @@ export const getStartContainer = () => {
 export const getUlFeeds = (data) => {
   const ulFeeds = document.createElement("ul");
   ulFeeds.classList.add("list-group", "border-0", "rounded-0");
-
+  // console.log(data, 'data')
   data.forEach((pairObj) => {
+    // console.log(pairObj, 'pairObj')
     const li = document.createElement("li");
     li.classList.add("list-group-item", "border-0", "border-end-0");
 
@@ -134,7 +135,7 @@ export const getUlFeeds = (data) => {
     ulFeeds.appendChild(li);
   });
 
-  console.log("ulFeeds", ulFeeds);
+  // console.log("ulFeeds", ulFeeds);
   return ulFeeds;
 };
 
@@ -189,3 +190,5 @@ export const XMLparserByTags = (contents) => {
 
   return { postsData, feedData };
 };
+
+
